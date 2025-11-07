@@ -1,51 +1,135 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Pop-Dak - Global Click Challenge</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pop-Dak Global Click Challenge</title>
   <style>
+    * {
+      box-sizing: border-box;
+    }
+
     body {
-      font-family: Arial, sans-serif;
+      font-family: "Poppins", sans-serif;
       text-align: center;
-      background: radial-gradient(circle, #f7f7f7, #e0e0e0);
-      color: #333;
-      padding: 20px;
+      background: radial-gradient(circle at center, #f0f4ff 0%, #dce3ff 100%);
+      margin: 0;
+      color: #222;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
     }
-    h1 { font-size: 2rem; margin-bottom: 10px; }
-    button {
-      font-size: 1.5rem;
-      padding: 10px 30px;
-      border: none;
-      border-radius: 8px;
-      background: #007bff;
-      color: white;
+
+    h1 {
+      font-size: 2rem;
+      margin-bottom: 5px;
+    }
+
+    #status {
+      font-size: 1.1rem;
+      margin-bottom: 20px;
+    }
+
+    .cat-container {
+      position: relative;
+      width: 280px;
+      height: 280px;
       cursor: pointer;
+      margin-bottom: 30px;
     }
-    button:active { transform: scale(0.95); }
-    #leaderboard {
-      margin-top: 30px;
-      text-align: left;
-      display: inline-block;
-    }
-    #leaderboard table {
-      border-collapse: collapse;
+
+    .cat-img {
+      position: absolute;
       width: 100%;
+      transition: all 0.1s ease;
+      user-select: none;
     }
-    #leaderboard th, #leaderboard td {
-      border: 1px solid #ccc;
-      padding: 8px 12px;
+
+    .cat-closed {
+      opacity: 1;
     }
-    #leaderboard th {
-      background: #007bff;
+
+    .cat-open {
+      opacity: 0;
+    }
+
+    .cat-container.active .cat-closed {
+      opacity: 0;
+    }
+
+    .cat-container.active .cat-open {
+      opacity: 1;
+    }
+
+    #counter {
+      font-size: 3rem;
+      font-weight: 700;
+      margin-bottom: 20px;
+    }
+
+    #leaderboard {
+      background: white;
+      padding: 20px;
+      border-radius: 16px;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+      max-width: 400px;
+      width: 90%;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    th, td {
+      padding: 10px;
+      border-bottom: 1px solid #eee;
+    }
+
+    th {
+      background-color: #007bff;
       color: white;
+      border-radius: 4px;
     }
+
+    tr:nth-child(1) td:first-child {
+      font-weight: bold;
+      color: gold;
+    }
+
+    tr:nth-child(2) td:first-child {
+      color: silver;
+    }
+
+    tr:nth-child(3) td:first-child {
+      color: #cd7f32;
+    }
+
+    @keyframes pop {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+      100% { transform: scale(1); }
+    }
+
+    .pop {
+      animation: pop 0.2s ease;
+    }
+
   </style>
 </head>
 <body>
   <h1>🌎 Pop-Dak Global Click Challenge</h1>
   <p id="status">Cargando país...</p>
-  <button id="clickBtn">Click!</button>
+
+  <div class="cat-container" id="cat">
+    <!-- 🐱 Usa cualquier imagen que quieras aquí -->
+    <img src="https://i.imgur.com/jlNnTtF.png" class="cat-img cat-closed" id="catClosed" alt="cat closed" />
+    <img src="https://i.imgur.com/mN7Ncbz.png" class="cat-img cat-open" id="catOpen" alt="cat open" />
+  </div>
+
+  <div id="counter">0</div>
 
   <div id="leaderboard">
     <h2>🏆 Leaderboard</h2>
