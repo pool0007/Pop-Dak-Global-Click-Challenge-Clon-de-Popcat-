@@ -1,85 +1,91 @@
-let userCountry = null;
-let totalClicks = 0;
 const cat = document.getElementById("cat");
-const counter = document.getElementById("counter");
-const popSound = document.getElementById("popSound");
-const globalCounter = document.getElementById("globalCounter");
+const catClosed = document.getElementById("catClosed");
+const catOpen = document.getElementById("catOpen");
+const clickCountEl = document.getElementById("click-count");
+const popSound = document.getElementById("pop-sound");
+const leaderboardEl = document.getElementById("leaderboard").querySelector("tbody");
 
-async function detectCountry() {
+let totalClicks = 0;
+
+// Detecta país por IP
+async function getCountry() {
   try {
     const res = await fetch("https://ipapi.co/json/");
     const data = await res.json();
-    userCountry = data.country_name || "Desconocido";
-    document.getElementById("status").textContent = `Tu país: ${userCountry}`;
+    return data.country_name || "Unknown";
   } catch {
-    userCountry = "Desconocido";
-    document.getElementById("status").textContent = "No se pudo detectar país";
+    return "Unknown";
   }
 }
 
-async function sendClick() {
-  if (!userCountry || userCountry === "Desconocido") return;
-
-  cat.classList.add("active");
-  counter.classList.add("pop");
+// Click del gato
+cat.addEventListener("click", async () => {
+  catClosed.style.opacity = 0;
+  catOpen.style.opacity = 1;
   popSound.currentTime = 0;
   popSound.play();
-
   setTimeout(() => {
-    cat.classList.remove("active");
-    counter.classList.remove("pop");
-  }, 150);
+    catClosed.style.opacity = 1;
+    catOpen.style.opacity = 0;
+  }, 100);
 
   totalClicks++;
-  counter.textContent = totalClicks;
+  clickCountEl.textContent = totalClicks;
 
-  try {
-    const res = await fetch("/api/click", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ country: userCountry }),
-    });
-    const data = await res.json();
-    if (data.success) {
-      renderLeaderboard(data.leaderboard);
-      updateGlobalCount(data.leaderboard);
-    }
-  } catch (err) {
-    console.error("Error al enviar click:", err);
-  }
-}
+  const country = await getCountry();
+  await fetch("/api/click", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ country }),
+  });
+});
 
-async function fetchLeaderboard() {
+// Cargar leaderboard
+async function loadLeaderboard() {
   try {
     const res = await fetch("/api/leaderboard");
     const data = await res.json();
+
     if (data.success) {
-      renderLeaderboard(data.leaderboard);
-      updateGlobalCount(data.leaderboard);
+      leaderboardEl.innerHTML = "";
+
+      data.leaderboard.forEach((row, index) => {
+        const tr = document.createElement("tr");
+
+        const medal =
+          index === 0 ? "🥇" :
+          index === 1 ? "🥈" :
+          index === 2 ? "🥉" : "";
+
+        const flagUrl = `https://flagsapi.com/${getFlagCode(row.country)}/flat/32.png`;
+
+        tr.innerHTML = `
+          <td class="rank">${medal || index + 1}</td>
+          <td><img class="flag" src="${flagUrl}" alt="${row.country} flag">${row.country}</td>
+          <td>${row.total_clicks.toLocaleString()}</td>
+        `;
+        leaderboardEl.appendChild(tr);
+      });
     }
   } catch (err) {
-    console.error("Error al obtener leaderboard:", err);
+    leaderboardEl.innerHTML = `<tr><td colspan="3">Error loading leaderboard</td></tr>`;
   }
 }
 
-function updateGlobalCount(leaderboard) {
-  const total = leaderboard.reduce((sum, r) => sum + r.total_clicks, 0);
-  globalCounter.textContent = `🌐 Total: ${total.toLocaleString()}`;
+// Convierte nombre de país → código ISO (para banderas)
+function getFlagCode(name) {
+  const map = {
+    Argentina: "AR",
+    Chile: "CL",
+    México: "MX",
+    España: "ES",
+    "Estados Unidos": "US",
+    "United States": "US",
+    Brazil: "BR",
+  };
+  return map[name] || "UN";
 }
 
-function renderLeaderboard(leaderboard) {
-  const tbody = document.getElementById("leaderboardBody");
-  tbody.innerHTML = "";
-  leaderboard.forEach((row, i) => {
-    const tr = document.createElement("tr");
-    tr.innerHTML = `<td>${i + 1}. ${row.country}</td><td>${row.total_clicks}</td>`;
-    tbody.appendChild(tr);
-  });
-}
-
-cat.addEventListener("click", sendClick);
-
-detectCountry().then(() => {
-  fetchLeaderboard();
-  setInterval(fetchLeaderboard, 5000);
-});
+// Refrescar leaderboard cada 10s
+setInterval(loadLeaderboard, 10000);
+loadLeaderboard();
