@@ -1,55 +1,60 @@
-const counter = document.getElementById("counter");
-const leaderboard = document.getElementById("leaderboard");
-const cat = document.getElementById("cat");
-const pop = document.getElementById("pop");
+let userCountry = null;
 
-let count = 0;
-let country = "Unknown";
-
-// Detectar país automáticamente
-fetch("https://ipapi.co/json/")
-  .then(r => r.json())
-  .then(data => {
-    country = data.country_name || "Unknown";
-  })
-  .catch(() => { country = "Unknown"; });
-
-// Al hacer clic
-cat.addEventListener("click", async () => {
-  count++;
-  counter.textContent = count;
-  pop.currentTime = 0;
-  pop.play();
-
-  // Cada 10 clics enviamos al servidor
-  if (count % 10 === 0) {
-    try {
-      await fetch("/api/click", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ country, clicks: 10 })
-      });
-      updateLeaderboard();
-    } catch (err) {
-      console.error("❌ Error enviando clics:", err);
-    }
-  }
-});
-
-async function updateLeaderboard() {
+async function detectCountry() {
   try {
-    const res = await fetch("/api/leaderboard");
+    const res = await fetch("https://ipapi.co/json/");
     const data = await res.json();
-    leaderboard.innerHTML = "";
-    data.forEach((row, i) => {
-      const li = document.createElement("li");
-      li.textContent = `${i + 1}. ${row.country}: ${row.clicks.toLocaleString()}`;
-      leaderboard.appendChild(li);
-    });
+    userCountry = data.country_name || "Desconocido";
+    document.getElementById("status").textContent = `Tu país: ${userCountry}`;
   } catch (err) {
-    console.error("❌ Error cargando leaderboard:", err);
+    console.error("Error al detectar país:", err);
+    userCountry = "Desconocido";
+    document.getElementById("status").textContent = "No se pudo detectar país";
   }
 }
 
-updateLeaderboard();
-setInterval(updateLeaderboard, 15000); // Actualiza cada 15 segundos
+async function sendClick() {
+  if (!userCountry || userCountry === "Desconocido") {
+    alert("Aún no se detectó tu país. Espera un momento...");
+    return;
+  }
+
+  try {
+    const res = await fetch("/api/click", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ country: userCountry }),
+    });
+    const data = await res.json();
+    if (data.success) renderLeaderboard(data.leaderboard);
+  } catch (err) {
+    console.error("Error al enviar click:", err);
+  }
+}
+
+async function fetchLeaderboard() {
+  try {
+    const res = await fetch("/api/leaderboard");
+    const data = await res.json();
+    if (data.success) renderLeaderboard(data.leaderboard);
+  } catch (err) {
+    console.error("Error al obtener leaderboard:", err);
+  }
+}
+
+function renderLeaderboard(leaderboard) {
+  const tbody = document.getElementById("leaderboardBody");
+  tbody.innerHTML = "";
+  leaderboard.forEach((row, i) => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td>${i + 1}. ${row.country}</td><td>${row.total_clicks}</td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+document.getElementById("clickBtn").addEventListener("click", sendClick);
+
+detectCountry().then(() => {
+  fetchLeaderboard();
+  setInterval(fetchLeaderboard, 5000);
+});
