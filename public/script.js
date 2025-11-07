@@ -5,9 +5,9 @@ const clickCountEl = document.getElementById("click-count");
 const popSound = document.getElementById("pop-sound");
 const leaderboardEl = document.getElementById("leaderboard").querySelector("tbody");
 
-let totalClicks = 0;
+let totalGlobalClicks = 0;
 
-// Detecta país por IP
+// 🗺️ Detecta país por IP
 async function getCountry() {
   try {
     const res = await fetch("https://ipapi.co/json/");
@@ -18,8 +18,25 @@ async function getCountry() {
   }
 }
 
-// Click del gato
+// 🧮 Obtiene el total global de clics desde la DB
+async function loadGlobalClicks() {
+  try {
+    const res = await fetch("/api/leaderboard");
+    const data = await res.json();
+
+    if (data.success) {
+      const sum = data.leaderboard.reduce((acc, row) => acc + (row.total_clicks || 0), 0);
+      totalGlobalClicks = sum;
+      clickCountEl.textContent = totalGlobalClicks.toLocaleString();
+    }
+  } catch (err) {
+    console.error("Error al cargar clicks globales:", err);
+  }
+}
+
+// 🐱 Manejo del clic en el gato
 cat.addEventListener("click", async () => {
+  // Animación y sonido
   catClosed.style.opacity = 0;
   catOpen.style.opacity = 1;
   popSound.currentTime = 0;
@@ -29,18 +46,27 @@ cat.addEventListener("click", async () => {
     catOpen.style.opacity = 0;
   }, 100);
 
-  totalClicks++;
-  clickCountEl.textContent = totalClicks;
-
+  // Envía clic al backend
   const country = await getCountry();
-  await fetch("/api/click", {
+  const res = await fetch("/api/click", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ country }),
   });
+
+  const data = await res.json();
+
+  if (data.success) {
+    // Actualiza contador global en tiempo real
+    totalGlobalClicks += 1;
+    clickCountEl.textContent = totalGlobalClicks.toLocaleString();
+
+    // Actualiza leaderboard inmediatamente
+    loadLeaderboard();
+  }
 });
 
-// Cargar leaderboard
+// 🏆 Carga y muestra el leaderboard
 async function loadLeaderboard() {
   try {
     const res = await fetch("/api/leaderboard");
@@ -51,7 +77,6 @@ async function loadLeaderboard() {
 
       data.leaderboard.forEach((row, index) => {
         const tr = document.createElement("tr");
-
         const medal =
           index === 0 ? "🥇" :
           index === 1 ? "🥈" :
@@ -68,11 +93,12 @@ async function loadLeaderboard() {
       });
     }
   } catch (err) {
+    console.error("Error loading leaderboard:", err);
     leaderboardEl.innerHTML = `<tr><td colspan="3">Error loading leaderboard</td></tr>`;
   }
 }
 
-// Convierte nombre de país → código ISO (para banderas)
+// 🌍 Mapa de nombres de país → código ISO
 function getFlagCode(name) {
   const map = {
     Argentina: "AR",
@@ -86,6 +112,8 @@ function getFlagCode(name) {
   return map[name] || "UN";
 }
 
-// Refrescar leaderboard cada 10s
-setInterval(loadLeaderboard, 10000);
+// 🔁 Inicializa todo
 loadLeaderboard();
+loadGlobalClicks();
+setInterval(loadLeaderboard, 10000);
+setInterval(loadGlobalClicks, 15000);
