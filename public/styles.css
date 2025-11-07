@@ -1,0 +1,39 @@
+body {
+  text-align: center;
+  background: radial-gradient(circle, #111 30%, #000);
+  color: white;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  overflow-x: hidden;
+}
+
+#cat {
+  width: 300px;
+  cursor: pointer;
+  transition: transform 0.08s ease;
+  user-select: none;
+}
+
+#cat:active {
+  transform: scale(0.9);
+}
+
+h1 {
+  font-size: 2em;
+  margin-top: 30px;
+}
+
+p {
+  font-size: 1.2em;
+  margin: 10px 0 30px;
+}
+
+#leaderboard {
+  width: 300px;
+  margin: 30px auto;
+  text-align: left;
+}
+
+li {
+  font-size: 1.1em;
+  margin: 5px 0;
+}
