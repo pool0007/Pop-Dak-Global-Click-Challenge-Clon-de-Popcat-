@@ -1,4 +1,7 @@
 let userCountry = null;
+let totalClicks = 0;
+const cat = document.getElementById("cat");
+const counter = document.getElementById("counter");
 
 async function detectCountry() {
   try {
@@ -6,18 +9,25 @@ async function detectCountry() {
     const data = await res.json();
     userCountry = data.country_name || "Desconocido";
     document.getElementById("status").textContent = `Tu país: ${userCountry}`;
-  } catch (err) {
-    console.error("Error al detectar país:", err);
+  } catch {
     userCountry = "Desconocido";
     document.getElementById("status").textContent = "No se pudo detectar país";
   }
 }
 
 async function sendClick() {
-  if (!userCountry || userCountry === "Desconocido") {
-    alert("Aún no se detectó tu país. Espera un momento...");
-    return;
-  }
+  if (!userCountry || userCountry === "Desconocido") return;
+
+  cat.classList.add("active");
+  counter.classList.add("pop");
+
+  setTimeout(() => {
+    cat.classList.remove("active");
+    counter.classList.remove("pop");
+  }, 150);
+
+  totalClicks++;
+  counter.textContent = totalClicks;
 
   try {
     const res = await fetch("/api/click", {
@@ -52,7 +62,7 @@ function renderLeaderboard(leaderboard) {
   });
 }
 
-document.getElementById("clickBtn").addEventListener("click", sendClick);
+cat.addEventListener("click", sendClick);
 
 detectCountry().then(() => {
   fetchLeaderboard();
