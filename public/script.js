@@ -6,24 +6,34 @@ const popSound = document.getElementById("pop-sound");
 const leaderboardEl = document.getElementById("leaderboard").querySelector("tbody");
 
 let totalGlobalClicks = 0;
+let userCountry = "Unknown";
+let userCountryCode = "UN";
 
-// 🗺️ Detecta país por IP
-async function getCountry() {
+// 🌍 Detectar país con ipwho.is (más confiable)
+async function detectCountry() {
   try {
-    const res = await fetch("https://ipapi.co/json/");
+    const res = await fetch("https://ipwho.is/");
     const data = await res.json();
-    return data.country_name || "Unknown";
-  } catch {
-    return "Unknown";
+    if (data.success) {
+      userCountry = data.country || "Unknown";
+      userCountryCode = data.country_code || "UN";
+    } else {
+      userCountry = "Unknown";
+      userCountryCode = "UN";
+    }
+  } catch (err) {
+    console.warn("No se pudo detectar país:", err);
+    userCountry = "Unknown";
+    userCountryCode = "UN";
   }
+  console.log(`🌍 País detectado: ${userCountry} (${userCountryCode})`);
 }
 
-// 🧮 Obtiene el total global de clics desde la DB
+// 🧮 Obtener el total global desde el backend
 async function loadGlobalClicks() {
   try {
     const res = await fetch("/api/leaderboard");
     const data = await res.json();
-
     if (data.success) {
       const sum = data.leaderboard.reduce((acc, row) => acc + (row.total_clicks || 0), 0);
       totalGlobalClicks = sum;
@@ -34,9 +44,8 @@ async function loadGlobalClicks() {
   }
 }
 
-// 🐱 Manejo del clic en el gato
+// 🐱 Clic del gato
 cat.addEventListener("click", async () => {
-  // Animación y sonido
   catClosed.style.opacity = 0;
   catOpen.style.opacity = 1;
   popSound.currentTime = 0;
@@ -46,32 +55,27 @@ cat.addEventListener("click", async () => {
     catOpen.style.opacity = 0;
   }, 100);
 
-  // Envía clic al backend
-  const country = await getCountry();
+  // Enviar clic al backend
   const res = await fetch("/api/click", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ country }),
+    body: JSON.stringify({ country: userCountry }),
   });
 
   const data = await res.json();
 
   if (data.success) {
-    // Actualiza contador global en tiempo real
     totalGlobalClicks += 1;
     clickCountEl.textContent = totalGlobalClicks.toLocaleString();
-
-    // Actualiza leaderboard inmediatamente
-    loadLeaderboard();
+    loadLeaderboard(); // actualiza inmediatamente
   }
 });
 
-// 🏆 Carga y muestra el leaderboard
+// 🏆 Leaderboard dinámico
 async function loadLeaderboard() {
   try {
     const res = await fetch("/api/leaderboard");
     const data = await res.json();
-
     if (data.success) {
       leaderboardEl.innerHTML = "";
 
@@ -82,38 +86,62 @@ async function loadLeaderboard() {
           index === 1 ? "🥈" :
           index === 2 ? "🥉" : "";
 
-        const flagUrl = `https://flagsapi.com/${getFlagCode(row.country)}/flat/32.png`;
+        const flagCode = getCountryCode(row.country);
+        const flagUrl = `https://flagsapi.com/${flagCode}/flat/32.png`;
 
         tr.innerHTML = `
           <td class="rank">${medal || index + 1}</td>
-          <td><img class="flag" src="${flagUrl}" alt="${row.country} flag">${row.country}</td>
+          <td>
+            <img class="flag" src="${flagUrl}" alt="${row.country} flag">
+            ${row.country}
+          </td>
           <td>${row.total_clicks.toLocaleString()}</td>
         `;
         leaderboardEl.appendChild(tr);
       });
     }
   } catch (err) {
-    console.error("Error loading leaderboard:", err);
-    leaderboardEl.innerHTML = `<tr><td colspan="3">Error loading leaderboard</td></tr>`;
+    console.error("Error al cargar leaderboard:", err);
   }
 }
 
-// 🌍 Mapa de nombres de país → código ISO
-function getFlagCode(name) {
-  const map = {
-    Argentina: "AR",
-    Chile: "CL",
-    México: "MX",
-    España: "ES",
+// 🔠 Obtener código ISO automático (fallback)
+function getCountryCode(name) {
+  // Si es el país del usuario, devolvemos su código real
+  if (name === userCountry) return userCountryCode;
+
+  // Algunos nombres comunes traducidos
+  const known = {
     "Estados Unidos": "US",
-    "United States": "US",
-    Brazil: "BR",
+    "Reino Unido": "GB",
+    "Emiratos Árabes Unidos": "AE",
+    "Corea del Sur": "KR",
+    "Corea del Norte": "KP",
+    "República Checa": "CZ",
+    "República Dominicana": "DO",
+    "Brasil": "BR",
+    "España": "ES",
+    "México": "MX",
+    "Argentina": "AR",
+    "Chile": "CL",
+    "Perú": "PE",
+    "Colombia": "CO",
+    "Venezuela": "VE",
+    "Uruguay": "UY",
+    "Paraguay": "PY",
+    "Ecuador": "EC",
+    "Bolivia": "BO",
   };
-  return map[name] || "UN";
+  return known[name] || "UN";
 }
 
-// 🔁 Inicializa todo
-loadLeaderboard();
-loadGlobalClicks();
-setInterval(loadLeaderboard, 10000);
-setInterval(loadGlobalClicks, 15000);
+// 🔁 Inicialización
+(async function init() {
+  await detectCountry();
+  await loadLeaderboard();
+  await loadGlobalClicks();
+
+  // refresca datos en segundo plano
+  setInterval(loadLeaderboard, 10000);
+  setInterval(loadGlobalClicks, 15000);
+})();
