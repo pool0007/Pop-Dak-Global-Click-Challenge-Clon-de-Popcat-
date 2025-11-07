@@ -2,6 +2,8 @@ let userCountry = null;
 let totalClicks = 0;
 const cat = document.getElementById("cat");
 const counter = document.getElementById("counter");
+const popSound = document.getElementById("popSound");
+const globalCounter = document.getElementById("globalCounter");
 
 async function detectCountry() {
   try {
@@ -20,6 +22,8 @@ async function sendClick() {
 
   cat.classList.add("active");
   counter.classList.add("pop");
+  popSound.currentTime = 0;
+  popSound.play();
 
   setTimeout(() => {
     cat.classList.remove("active");
@@ -36,7 +40,10 @@ async function sendClick() {
       body: JSON.stringify({ country: userCountry }),
     });
     const data = await res.json();
-    if (data.success) renderLeaderboard(data.leaderboard);
+    if (data.success) {
+      renderLeaderboard(data.leaderboard);
+      updateGlobalCount(data.leaderboard);
+    }
   } catch (err) {
     console.error("Error al enviar click:", err);
   }
@@ -46,10 +53,18 @@ async function fetchLeaderboard() {
   try {
     const res = await fetch("/api/leaderboard");
     const data = await res.json();
-    if (data.success) renderLeaderboard(data.leaderboard);
+    if (data.success) {
+      renderLeaderboard(data.leaderboard);
+      updateGlobalCount(data.leaderboard);
+    }
   } catch (err) {
     console.error("Error al obtener leaderboard:", err);
   }
+}
+
+function updateGlobalCount(leaderboard) {
+  const total = leaderboard.reduce((sum, r) => sum + r.total_clicks, 0);
+  globalCounter.textContent = `🌐 Total: ${total.toLocaleString()}`;
 }
 
 function renderLeaderboard(leaderboard) {
